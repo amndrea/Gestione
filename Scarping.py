@@ -3,13 +3,13 @@ import requests
 
 """CLASSE CHE RACCHIUDE LE CARATTERISTICHE DI UN PRODOTTO"""
 class Prodotto:
-
-    def __init__(self, marca, descrizione, prezzo, link):
+    def __init__(self, categoria, marca, descrizione, prezzo, link,display):
+        self.categoria = categoria
         self.marca = marca
         self.descrizione = descrizione
         self.prezzo = prezzo
         self.link = link
-
+        self.display = display
 
 """FUNZIONE UTILE PER ESTRARRE LA MARCA CHE E' LA PRIMA PAROLA DELLA DESCRIZIONE"""
 def estrai_sottostringa(Stringa):
@@ -17,29 +17,16 @@ def estrai_sottostringa(Stringa):
     stringa = Stringa[0:ind]
     return stringa
 
-"""Metodo che scarica tutti i dati di notebook disponibili sul sito mediaword"""
-def mediaword():
 
-    link = "https://www.mediaworld.it/it/category/notebook-200101.html?page=3"
+def Mediaword_link(Link):
     pre_link = "https://www.mediaworld.it"
+    response = requests.get(Link)
+    response.raise_for_status()
+    soup = bs4.BeautifulSoup(response.text, 'html.parser')
 
-
-    response = requests.get(link)   # scarica la pagina e la mette in response
-    response.raise_for_status()  # genera un'eccezione se la richiesta http fallisce
-
-
-    soup = bs4.BeautifulSoup(response.text, 'html.parser')  # salvo il testo HTML della pagina nella variabile soup
-
-    # con control+shift+c trovo la sezione nel quale sono contenute le cose che mi interessano
-    # e copio la classe della div
     div_notebook = soup.find('div', class_='StyledBox-sc-1vld6r2-0 goTwsP StyledFlexBox-sc-7l2z3t-1 ljqTAF')
-
-    # all'interno della div sopra copiata, continuando l'analisi della pagina, mi accorgo che
-    # ci sono tutti i link degli articoli, con all'interno degli hiperlink
-    a_notebooks = div_notebook.find_all('a')   # con find_all trovo tutti gli hiperlink
-    links = []  # estraggo tutti gli hiperlink della div a e li inserisco in una lista nuova
-
-
+    a_notebooks = div_notebook.find_all('a')
+    links = []
 
     for a_notebook in a_notebooks:
         half_link_pc = str(a_notebook.get('href'))  # con get estrapolo il link href dall'hiperlink
@@ -47,8 +34,6 @@ def mediaword():
 
         links.append(link_pc)
     return links
-
-
 
 
 """FUNZIONE PER ACQUISIRE I CAMPI DI INTERESSE DI UN NOTEBOOK MEDIAWORD"""
@@ -71,11 +56,15 @@ def attributi(link):
     return marca , prezzo, link, descr
 
 
-"""-------------------------------------------------------------------------------------"""
-links = mediaword()
-print(len(links))
-for links_ in links:
-    prodotto = attributi(links_)
-    print(prodotto)
+
+"""**********************************************************************************"""
+link_list = ["https://www.mediaworld.it/it/category/notebook-200101.html?page=", "https://www.mediaworld.it/it/search.html?page=5&query=smartphone",
+     "https://www.mediaworld.it/it/search.html?query=tablet&t=1666774334565"]
+
+for l in link_list:
+    links = Mediaword_link(l)
+    for link in links:
+        print(link)
+
 
 
