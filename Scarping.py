@@ -11,6 +11,11 @@ class Prodotto:
         self.link = link
         self.display = display
 
+class prodotto:
+    def __init__(self, categoria, marca, descrizione, prezzo, link, processore,display, memoria ):
+        pass
+
+
 """FUNZIONE UTILE PER ESTRARRE LA MARCA CHE E' LA PRIMA PAROLA DELLA DESCRIZIONE"""
 def estrai_sottostringa(Stringa):
     ind = Stringa.find(" ")
