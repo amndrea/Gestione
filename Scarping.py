@@ -1,68 +1,63 @@
 import bs4
 import requests
-import regex
+import os
+import shutil
 
-"""CLASSE CHE RACCHIUDE LE CARATTERISTICHE DI UN PRODOTTO"""
-class Prodotto:
-    def __init__(self, categoria, marca, descrizione, prezzo, link,display, ram, processore, memoria):
-        self.categoria = categoria
-        self.marca = marca
-        self.descrizione = descrizione
-        self.prezzo = prezzo
-        self.link = link
-        self.display = display
-        self.memoria = ram
-        self.processore = processore
-        self.memoria = memoria
-
-class prodotto:
-    def __init__(self, categoria, marca, descrizione, prezzo, link, processore,display, memoria ):
-        pass
-
-
-"""FUNZIONE UTILE PER ESTRARRE LA MARCA CHE E' LA PRIMA PAROLA DELLA DESCRIZIONE"""
-def estrai_sottostringa(Stringa):
-    ind = Stringa.find(" ")
-    stringa = Stringa[0:ind]
+"""METODO PER ESTRARRE LA PRIMA PAROLA DA UNA STRINGA"""
+def SottoStringa(s):
+    ind = s.find(" ")
+    stringa = s[0:ind]
     return stringa
 
 
-def Mediaword_link(Link):
+"""METODO CHE SOSTITUISCE L'ULTIMO CARATTERE DI UNA STRINGA """
+def SostituisciCarattere(stringa,i):
+    max = len(stringa)
+    stringa = stringa[0:max-1]
+    stringa = stringa+str(i)
+    return stringa
+
+
+"""METODO CHE CONTROLLA CHE TUTTI GLI ATTRIBUTI DI INTERESSE
+    SIANO STATI ESTRATTI CORRETTAMENTE"""
+def CheckAttribti (marca, prezzo, link, descr ):
+    return marca and prezzo and link and descr
+
+
+"""METODO CHE CONTROLLA CHE CI SIA LA DIRECTORY PER SALVARRE I FILE
+    SE NON ESISTE LA CREA"""
+def CheckDir():
+    curr = str(os.getcwd()+'\File_scraping')
+    try:
+        namesDest= os.listdir(curr)
+    except:
+        os.makedirs(curr)
+
+
+"""METODO CHE ESTRAE TUTTI GLI HIPERLINK DAL SITO MEDIAWORD"""
+def Mediaword_link(Link, link_list):
     pre_link = "https://www.mediaworld.it"
-    response = requests.get(Link)
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+
+    response = requests.get(Link,headers =headers  )
     response.raise_for_status()
     soup = bs4.BeautifulSoup(response.text, 'html.parser')
 
     div_prodotto = soup.find('div', class_='StyledBox-sc-1vld6r2-0 goTwsP StyledFlexBox-sc-7l2z3t-1 ljqTAF')
     a_prodotti = div_prodotto.find_all('a')
-    links = []
 
     for a_prodotto in a_prodotti:
         half_link_prodotto = str(a_prodotto.get('href'))  # con get estrapolo il link href dall'hiperlink
         link_prodotto = pre_link + half_link_prodotto
 
-        links.append(link_prodotto)
-    return links
+        link_list.append(link_prodotto)
 
-def Unieuro(Link):
-    pre_link = "https://www.unieuro.it/"
-    response = requests.get(Link)
-    response.raise_for_status()
-    soup = bs4.BeautifulSoup(response.text, 'html.parser')
 
-    div_prodotto = soup.find('div', class_='items-container listing__items items-section')
-    a_prodotti = div_prodotto.find_all('a')
-    links = []
-
-    for a_prodotto in a_prodotti:
-        half_link_prodotto = str(a_prodotto.get('href'))
-        link_prodotto = pre_link+half_link_prodotto
-
-        links.append(link_prodotto)
-    return links
-"""FUNZIONE PER ACQUISIRE I CAMPI DI INTERESSE DI UN PRODOTTO MEDIAWORD"""
+"""METODO CHE DATO UN LINK DI DI UNA PAGINA MEDIAWORD
+    ESTRAE I CAMPI DI INTERESSE"""
 def AttributiMediaword(link):
-    response = requests.get(link)
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+    response = requests.get(link, headers=headers)
     response.raise_for_status()
     soup = bs4.BeautifulSoup(response.text, 'html.parser')
 
@@ -70,38 +65,52 @@ def AttributiMediaword(link):
     descr = div_descr.getText()
     descr = str(descr)
 
-    marca = estrai_sottostringa(descr)
+    marca = SottoStringa(descr)
 
     div_prezzo = soup.find('span', class_ ='ScreenreaderTextSpan-sc-11hj9ix-0 kZCfsu')
+
     x = div_prezzo.getText()
     x = x.replace('undefined ','')
     prezzo = x
 
-    div_display = soup.findAll('td', text = " .* pollici")
-    #div_display = div_display_.findall('td', class_ ='StyledDataCell-y8xttg-0 izdyJt StyledTableCell-ea56b7-2 jCWWgG')
+    #div_display = soup.find('td', class_='StyledDataCell-y8xttg-0 izdyJt StyledTableCell-ea56b7-2 jCWWgG')
+    #display = div_display.getText()
 
-    display = div_display[0].getText()
+    #div_processore = soup.find('td', class_='StyledDataCell-y8xttg-0 izdyJt StyledTableCell-ea56b7-2 jCWWgG')
 
-
-
-    return marca , prezzo, link, descr, display
+    return marca , prezzo, link, descr
 
 
-"""**********************************************************************************"""
-link_list = ["https://www.mediaworld.it/it/category/notebook-200101.html?page="] #, "https://www.mediaworld.it/it/search.html?page=5&query=smartphone",
-    # "https://www.mediaworld.it/it/search.html?query=tablet&t=1666774334565"]
-#link_list2 = ["https://www.euronics.it/informatica/computer-portatili/"]
+
+#---------------------------------------------------------------------------#
+#       DA QUI PARTONO LE ISTRUZIONI DEL PROGRAMMA VERO E PROPRIO
+#---------------------------------------------------------------------------#
+link_notebook = 'https://www.mediaworld.it/it/category/notebook-200101.html?page=1'
+link_smartphone = 'https://www.mediaworld.it/it/search.html?query=smartphone&page=1'
+link_tablet = 'https://www.mediaworld.it/it/search.html?query=tablet&page=1'
+
+link_list_notebook = []
+link_list_smartphone = []
+link_list_tablet = []
+link_list = []
+
+for i in range (1,8):
+    Mediaword_link(SostituisciCarattere(link_notebook,i),link_list_notebook)
+    Mediaword_link(SostituisciCarattere(link_smartphone,i),link_list_smartphone)
+    Mediaword_link(SostituisciCarattere(link_tablet,i),link_list_tablet)
+link_list.extend(link_list_notebook)
+link_list.extend(link_list_smartphone)
+link_list.extend(link_list_tablet)
 
 
-"""
-for l in link_list:
-    links = Mediaword_link(l)
-    for link in links:
-        print(attributi(link))
-        #print(link)
-"""
-Link = Unieuro("https://www.unieuro.it/online/?q=notebook&gclsrc[0]=aw.ds&gclsrc[1]=aw.ds&dstid=43700053003976234&adid=484314822661&gclid=Cj0KCQjw--2aBhD5ARIsALiRlwDrrGgocMzjHEnRl1KxLDoipKW4qUgf28tR5yVTxtGv9sgRM6I9e14aAoJyEALw_wcB")
-for link in Link:
-    print(link)
 
 
+for link in link_list:
+    marca,prezzo, links, descrizione = AttributiMediaword(link)
+    CheckDir()
+    # CAMBIARE LA DIRECTORY DA QUELLA ATTUALE A QUELLA DEI FILE
+    if (CheckAttribti(marca, prezzo, link, descrizione)):
+        """TO DO creo un file in scrittura, ci scrivo dentro tutti gli attributi
+            e lo chiudo"""
+        print(prezzo, links)
+        #print(marca, prezzo, link, descrizione)
